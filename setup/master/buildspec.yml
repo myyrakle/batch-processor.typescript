@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - VERSION=$CODEBUILD_BUILD_NUMBER
+      - ECR_HOST=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_HOST
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - rsync -av . ./setup/master --exclude /setup
+      - # ... env setting
+      - docker build -t batch-processor ./setup/master
+      - docker tag batch-processor:latest $ECR_HOST/$ECR_NAME:latest
+      - docker tag batch-processor:latest $ECR_HOST/$ECR_NAME:$VERSION
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $ECR_HOST/$ECR_NAME:latest
+      - docker push $ECR_HOST/$ECR_NAME:$VERSION
+      - echo success
